@@ -32,6 +32,8 @@ const PILLARS = [
       { id: "energy", text: "How reliant is this business on fossil fuels — vehicles, machinery, heating, generators?", type: "level" },
       { id: "weather", text: "Has severe weather disrupted its operations, supply chain, or premises in the last five years?", type: "yesno" },
       { id: "priceVolatility", text: "Is energy or fuel price volatility likely to be a real concern for its margins?", type: "yesno" },
+      { id: "emissionsManagement", text: "Does the business currently measure or actively work to reduce its carbon emissions?", type: "yesno_inverted" },
+      { id: "customerExposure", text: "Could a changing climate affect the demand, stability, or spending of this business's key customers?", type: "yesnounsure" },
     ],
   },
   {
@@ -419,7 +421,7 @@ Flagged priority areas:
 ${summaryLines}
 
 For each flagged area write:
-1. "why" — one or two sentences on why this specific business should pay attention here, framed around near-term commercial risk or opportunity. Where it's genuinely relevant (most often for climate, sometimes environment) you can note that demonstrating mitigation action here can support better terms with lenders and insurers — but only mention this where it actually fits; don't force it into every pillar.
+1. "why" — one or two sentences on why this specific business should pay attention here. Cover risk AND opportunity, not just risk — for climate specifically, where genuinely relevant, mention the competitive-advantage side too (cost savings from reduced energy/fuel use, brand and customer trust, easier compliance, opening new markets), not only exposure. Where it's genuinely relevant (most often climate, sometimes environment) you can also note that demonstrating mitigation action can support better terms with lenders and insurers — but only where it actually fits; don't force it into every pillar.
 2. "quickWin" — one concrete, low-effort first action within a few months.
 
 Return ONLY valid JSON, no markdown fences, in this exact shape:
