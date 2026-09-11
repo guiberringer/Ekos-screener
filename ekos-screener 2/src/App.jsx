@@ -51,7 +51,7 @@ const PILLARS = [
     label: "Nature",
     tagline: "What your business depends on and affects in the natural world",
     questions: [
-      { id: "dependency", text: "Do its products or services depend on natural resources — land, water, fisheries, forestry?", type: "yesno" },
+      { id: "dependency", text: "Do its products or services — directly, or through what they're made from and where those materials originate — depend on natural resources like land, water, fisheries, or forestry?", type: "yesno" },
       { id: "sensitiveAreas", text: "Might any sites or suppliers operate in or near ecologically sensitive areas?", type: "yesnounsure" },
     ],
   },
@@ -83,7 +83,7 @@ const PROFILE_FIELDS = [
   { key: "revenue", label: "Annual revenue", question: "Roughly what annual revenue band does it fall into?", kind: "select", options: ["Under $2m", "$2m–$10m", "$10m–$50m", "Over $50m"] },
   { key: "sites", label: "Number of physical sites", question: "How many physical sites or locations does it operate?", kind: "number" },
   { key: "offshoreSupply", label: "Offshore/overseas supply chain", question: "Does its supply chain include overseas manufacturing or offshore sourcing?", kind: "yesno" },
-  { key: "natureInputs", label: "Depends on natural resources", question: "Are its key inputs sourced from nature — agriculture, fisheries, forestry, land?", kind: "yesno" },
+  { key: "natureInputs", label: "Depends on natural resources", question: "Are its key inputs — including raw materials embedded in what it sells or sources, like paper, timber, cotton, or packaging, not just obviously \"natural\" products — ultimately sourced from nature: agriculture, fisheries, forestry, land?", kind: "yesno" },
   { key: "weatherExposed", label: "Weather-exposed sites", question: "Do its physical sites face weather-related risk — flooding, storms, drought, heat?", kind: "yesno" },
 ];
 
@@ -164,6 +164,8 @@ function buildResearchPrompt(businessName, website) {
 The business name alone may be short, generic, or shared with unrelated organisations elsewhere in the world (including other companies also called "${businessName}"). Before relying on any search result, confirm it's actually a New Zealand-based business and, if a website was given, that it matches that domain — if a result seems to belong to a different, unrelated company with a similar name, disregard it rather than using its details. Try a few search variations if the first attempt is ambiguous (e.g. the name plus "New Zealand", plus "NZ", plus the website domain, plus the likely industry).
 
 Use what you find to make your best-informed, honest estimate for each field below. Where you find no reliable direct information, use reasonable sector-based inference where it's genuinely sound (e.g. a small independent retailer is unlikely to have a formal sustainability governance structure; a manufacturer is more likely to be energy-intensive) and say so plainly in the rationale. If you have no reasonable basis at all, answer "unknown" — do not fabricate specifics like incident counts or named suppliers, and do not carry over details from an unrelated same-named company.
+
+On nature-dependency questions specifically: don't limit "depends on nature" to businesses that obviously touch land or water directly. A distributor of paper products depends on forestry, a clothing retailer depends on cotton farming or livestock, a printer depends on timber and water — trace materials back to their origin rather than stopping at "these are manufactured goods."
 
 Profile fields:
 ${profileLines}
