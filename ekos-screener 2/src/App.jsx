@@ -199,17 +199,41 @@ async function callClaudeRaw(body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await response.json();
-  if (data.error) {
-    return { ok: false, raw: JSON.stringify(data.error, null, 2), parsed: null };
+
+  const rawBodyText = await response.text();
+  const header = `HTTP status: ${response.status} ${response.statusText}\n`;
+
+  let data;
+  try {
+    data = JSON.parse(rawBodyText);
+  } catch (err) {
+    // The response wasn't JSON at all — common if a serverless function timed
+    // out or crashed and the platform returned an empty/HTML response instead.
+    return {
+      ok: false,
+      raw: header + `Response body was not valid JSON (length ${rawBodyText.length} chars):\n\n${rawBodyText.slice(0, 1500)}`,
+      parsed: null,
+    };
   }
+
+  if (data.error) {
+    return { ok: false, raw: header + JSON.stringify(data.error, null, 2), parsed: null };
+  }
+
   const text = (data.content || [])
     .filter((b) => b.type === "text")
     .map((b) => b.text || "")
     .join("\n")
     .replace(/```json|```/g, "");
   const toolCalls = (data.content || []).filter((b) => b.type === "server_tool_use" || b.type === "web_search_tool_result");
-  const debugSummary = `Content block types: ${(data.content || []).map((b) => b.type).join(", ") || "(none)"}\nSearch-related blocks: ${toolCalls.length}\n\n--- raw text ---\n${text}`;
+  const debugSummary =
+    header +
+    `Top-level response keys: ${Object.keys(data).join(", ") || "(none)"}\n` +
+    `Stop reason: ${data.stop_reason || "(none)"}\n` +
+    `Content block types: ${(data.content || []).map((b) => b.type).join(", ") || "(none)"}\n` +
+    `Search-related blocks: ${toolCalls.length}\n\n--- raw text ---\n${text}` +
+    (text ? "" : `\n\n--- full response (for diagnosis) ---\n${JSON.stringify(data, null, 2).slice(0, 2000)}`);
+
   try {
     const parsed = extractJson(text);
     return { ok: true, raw: debugSummary, parsed };
