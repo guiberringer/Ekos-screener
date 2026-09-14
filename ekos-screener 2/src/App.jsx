@@ -471,7 +471,7 @@ Only include keys for the flagged areas, using ids exactly: climate, environment
       const res = await fetch("/.netlify/functions/save-submission", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessName, contactName, contactEmail, website, profile, results, aiCopy: finalAiCopy }),
+        body: JSON.stringify({ businessName, contactName, contactEmail, website, profile, answers, results, aiCopy: finalAiCopy }),
       });
       const data = await res.json();
       setSaveStatus(data.flow && data.flow.ok ? "done" : "error");
