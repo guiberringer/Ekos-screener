@@ -16,6 +16,19 @@ const PILLAR_LABELS = {
 };
 const LEVEL_ORDER = ["High", "Medium", "Low"];
 
+// Mirrors the question ids defined in src/App.jsx's PILLARS array. Kept as a plain
+// list here (rather than shared code) since the frontend and this function build
+// separately — if you add/rename a question in App.jsx, add its id here too, or it
+// just won't get its own column (it'll still be captured inside summaryText either way).
+const PILLAR_QUESTION_IDS = {
+  climate: ["energy", "weather", "priceVolatility", "emissionsManagement", "customerExposure"],
+  environment: ["waste", "water", "compliance"],
+  nature: ["dependency", "sensitiveAreas"],
+  social: ["supplyChain", "visibility", "incidents"],
+  governance: ["policy", "reporting", "asked"],
+};
+const PROFILE_KEYS = ["sector", "employees", "revenue", "sites", "offshoreSupply", "natureInputs", "weatherExposed"];
+
 function buildEmail({ contactName, businessName, results, aiCopy }) {
   const rows = Object.keys(results || {})
     .map((id) => ({ id, ...results[id] }))
@@ -116,7 +129,7 @@ export default async (req) => {
     });
   }
 
-  const { businessName, contactName, contactEmail, website, profile, results, aiCopy } = body;
+  const { businessName, contactName, contactEmail, website, profile, answers, results, aiCopy } = body;
   if (!businessName || !contactEmail) {
     return new Response(JSON.stringify({ error: { message: "Missing businessName or contactEmail" } }), {
       status: 400,
@@ -132,19 +145,26 @@ export default async (req) => {
     contactName: contactName || "",
     contactEmail,
     website: website || "",
-    sector: profile?.sector || "",
-    employees: profile?.employees || "",
-    revenue: profile?.revenue || "",
-    sites: profile?.sites || "",
-    climateLevel: results?.climate?.level || "",
-    environmentLevel: results?.environment?.level || "",
-    natureLevel: results?.nature?.level || "",
-    socialLevel: results?.social?.level || "",
-    governanceLevel: results?.governance?.level || "",
-    summaryText,
-    emailSubject: subject,
-    emailHtmlBody: htmlBody,
   };
+
+  // Every profile field, not just the four that used to be picked out.
+  PROFILE_KEYS.forEach((key) => {
+    sheetPayload[`profile_${key}`] = profile?.[key] ?? "";
+  });
+
+  // Every individual pillar question's answer, plus that pillar's level and AI copy.
+  Object.keys(PILLAR_QUESTION_IDS).forEach((pillarId) => {
+    PILLAR_QUESTION_IDS[pillarId].forEach((qId) => {
+      sheetPayload[`${pillarId}_${qId}`] = answers?.[pillarId]?.[qId] ?? "";
+    });
+    sheetPayload[`${pillarId}_level`] = results?.[pillarId]?.level || "";
+    sheetPayload[`${pillarId}_why`] = aiCopy?.[pillarId]?.why || "";
+    sheetPayload[`${pillarId}_quickWin`] = aiCopy?.[pillarId]?.quickWin || "";
+  });
+
+  sheetPayload.summaryText = summaryText;
+  sheetPayload.emailSubject = subject;
+  sheetPayload.emailHtmlBody = htmlBody;
 
   const [sheet, mailchimp] = await Promise.all([
     sendToGoogleSheet(sheetPayload),
