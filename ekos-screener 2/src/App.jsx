@@ -161,7 +161,7 @@ function buildResearchPrompt(businessName, website) {
 
   return `You are researching a specific New Zealand business for a sustainability screening tool built by Ekos, an environmental consultancy. Target business: "${businessName}"${website ? `, website: ${website}` : ""}.
 
-The business name alone may be short, generic, or shared with unrelated organisations elsewhere in the world (including other companies also called "${businessName}"). Before relying on any search result, confirm it's actually a New Zealand-based business and, if a website was given, that it matches that domain — if a result seems to belong to a different, unrelated company with a similar name, disregard it rather than using its details. Try a few search variations if the first attempt is ambiguous (e.g. the name plus "New Zealand", plus "NZ", plus the website domain, plus the likely industry).
+The business name alone may be short, generic, or shared with unrelated organisations elsewhere in the world (including other companies also called "${businessName}"). Before relying on any search result, confirm it's actually a New Zealand-based business and, if a website was given, that it matches that domain — if a result seems to belong to a different, unrelated company with a similar name, disregard it rather than using its details. If your first search is inconclusive, try at most ONE more variation (e.g. adding "New Zealand" or the website domain) — then stop searching and answer with what you have, marking anything genuinely unclear as "unknown" rather than continuing to search. A business with thin public information is a completely normal, expected outcome — don't keep searching to try to find more.
 
 Use what you find to make your best-informed, honest estimate for each field below. Where you find no reliable direct information, use reasonable sector-based inference where it's genuinely sound (e.g. a small independent retailer is unlikely to have a formal sustainability governance structure; a manufacturer is more likely to be energy-intensive) and say so plainly in the rationale. If you have no reasonable basis at all, answer "unknown" — do not fabricate specifics like incident counts or named suppliers, and do not carry over details from an unrelated same-named company.
 
@@ -173,7 +173,7 @@ ${profileLines}
 Assessment questions:
 ${pillarLines}
 
-Do a handful of focused searches, not exhaustive ones — 2 or 3 well-chosen queries is usually enough. Keep every rationale to one short sentence, under 20 words.
+At most 2 searches total for this whole task — do not exceed that even if results feel incomplete. Keep every rationale to one short sentence, under 20 words.
 
 Do whatever searching you need first. Your final reply must contain nothing except the JSON object below, fully filled in — no preamble, no markdown fences, no explanation before or after it:
 ${JSON.stringify(shape, null, 2)}`;
