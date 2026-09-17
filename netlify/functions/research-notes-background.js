@@ -60,7 +60,7 @@ export default async (req) => {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1200,
+        max_tokens: 2500,
         messages: [{ role: "user", content: buildNotesPrompt(businessName, website) }],
         tools: [{ type: "web_search_20250305", name: "web_search" }],
       }),
