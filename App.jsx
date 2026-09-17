@@ -361,23 +361,39 @@ export default function EkosScreener() {
     markTouched(`${pillarId}.${qId}`);
   }
 
+  async function pollForNotes(jobId) {
+    const maxAttempts = 40; // ~80 seconds at 2s intervals — generous, since background functions can run up to 15 min
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const res = await fetch(`/.netlify/functions/research-notes-status?jobId=${encodeURIComponent(jobId)}`);
+      const data = await res.json();
+      if (data.status === "done") return { ok: true, notes: data.notes, raw: "Background research completed.\n\n--- notes ---\n" + data.notes };
+      if (data.status === "error") return { ok: false, notes: null, raw: "Background research failed: " + (data.message || "unknown error") };
+      // status === "pending" — keep polling
+    }
+    return { ok: false, notes: null, raw: "Timed out waiting for background research after ~80 seconds." };
+  }
+
   async function runResearch() {
     setResearchStatus("loading");
     setDebugInfo("");
     try {
-      // Phase 1: the only call that searches the web. Lean output (notes, not
-      // 23 structured fields) so this one call stays fast even with search time.
-      const notesResult = await callClaudeRaw({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1200,
-        messages: [{ role: "user", content: buildNotesPrompt(businessName, website) }],
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
+      // Phase 1: kick off the search-and-notes step as a background job (no
+      // short response-time limit), then poll until it's done. This is the
+      // step that used to hit Netlify's timeout, since search time is
+      // genuinely unpredictable.
+      const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      await fetch("/.netlify/functions/research-notes-background", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, businessName, website }),
       });
-      if (!notesResult.ok || !notesResult.parsed?.notes) {
+      const notesResult = await pollForNotes(jobId);
+      if (!notesResult.ok || !notesResult.notes) {
         setDebugInfo("=== PHASE 1: research notes (failed) ===\n\n" + notesResult.raw);
         throw new Error("Phase 1 (research) failed");
       }
-      const notes = notesResult.parsed.notes;
+      const notes = notesResult.notes;
 
       // Phase 2: six small, parallel, non-search calls — each just extracts one
       // section from the notes above, so none of them carry search-time risk.
@@ -572,7 +588,7 @@ Only include keys for the flagged areas, using ids exactly: climate, environment
           We'll email you a copy of your results, and it's how an Ekos consultant would follow up if you want to go further.
         </p>
 
-        {researchStatus === "loading" && <p className="ai-status">Researching {businessName || "your business"}…</p>}
+        {researchStatus === "loading" && <p className="ai-status">Researching {businessName || "your business"}… this can take up to a minute.</p>}
         {researchStatus === "error" && (
           <p className="ai-status ai-status--error">Couldn't complete the research just now — you can retry, or fill everything in yourself.</p>
         )}
