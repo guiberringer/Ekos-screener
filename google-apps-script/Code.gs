@@ -23,9 +23,11 @@ function doPost(e) {
   var data = JSON.parse(e.postData.contents);
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 
-  // emailSubject/emailHtmlBody are only for the email below, not sheet columns.
+  // emailSubject/emailHtmlBody/notifySubject/notifyHtmlBody are only for the
+  // emails below, not sheet columns.
+  var excluded = ["emailSubject", "emailHtmlBody", "notifySubject", "notifyHtmlBody"];
   var incomingKeys = Object.keys(data).filter(function (k) {
-    return k !== "emailSubject" && k !== "emailHtmlBody";
+    return excluded.indexOf(k) === -1;
   });
 
   if (sheet.getLastRow() === 0) {
@@ -58,6 +60,20 @@ function doPost(e) {
     // Row is already saved even if the email fails — log it so you can see why
     // in Apps Script's execution log (View > Executions).
     Logger.log("Email send failed: " + err.message);
+  }
+
+  // Only present when the user clicked "Request a call" — notifies the Ekos
+  // team directly, with the lead's own address set as replyTo.
+  if (data.notifySubject && data.notifyHtmlBody) {
+    try {
+      MailApp.sendEmail("ekos@ekos.co.nz", data.notifySubject, data.notifySubject, {
+        htmlBody: data.notifyHtmlBody,
+        name: "Ekos Screener",
+        replyTo: data.contactEmail
+      });
+    } catch (err) {
+      Logger.log("Team notification email failed: " + err.message);
+    }
   }
 
   return ContentService.createTextOutput(JSON.stringify({ ok: true }))
