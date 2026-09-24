@@ -26,7 +26,7 @@ const LEVEL_ORDER = ["High", "Medium", "Low"];
 const PILLAR_QUESTION_IDS = {
   climate: ["energy", "weather", "priceVolatility", "emissionsManagement", "customerExposure"],
   environment: ["waste", "water", "compliance"],
-  nature: ["dependency", "sensitiveAreas"],
+  nature: ["impact", "sensitiveAreas"],
   social: ["supplyChain", "visibility", "incidents"],
   governance: ["policy", "reporting", "asked"],
 };
@@ -60,6 +60,14 @@ function buildEmail({ contactName, businessName, results, aiCopy }) {
         })
         .join("")}
     </ul>
+    ${
+      aiCopy?.marketSolution
+        ? `<div style="background:#144C6E;border-radius:4px;padding:20px 22px;margin:20px 0;">
+             <p style="color:#BFD9EA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 8px;">Beyond the product</p>
+             <p style="color:#fff;font-size:15px;line-height:1.6;margin:0;">${aiCopy.marketSolution}</p>
+           </div>`
+        : ""
+    }
     <p>This is a first screen, not a full assessment. An Ekos consultant can work through
     your flagged areas with you and build an action plan — and businesses that can
     demonstrate real mitigation action are often better placed for more favourable
@@ -80,7 +88,13 @@ async function sendToGoogleSheet(payload) {
       body: JSON.stringify(payload),
       redirect: "follow", // Apps Script web apps respond with a redirect on first hit
     });
-    return { ok: res.ok, status: res.status };
+    let scriptResult = {};
+    try {
+      scriptResult = await res.json();
+    } catch (err) {
+      // Apps Script didn't return JSON — treat as unknown but don't fail the whole request over it
+    }
+    return { ok: res.ok, status: res.status, clientEmailSent: scriptResult.clientEmailSent, notificationSent: scriptResult.notificationSent };
   } catch (err) {
     return { ok: false, error: err.message };
   }
@@ -133,7 +147,7 @@ export default async (req) => {
     });
   }
 
-  const { businessName, contactName, contactEmail, website, profile, answers, results, aiCopy } = body;
+  const { businessName, contactName, contactEmail, website, profile, answers, results, aiCopy, researchNotes, requestCall } = body;
   if (!businessName || !contactEmail) {
     return new Response(JSON.stringify({ error: { message: "Missing businessName or contactEmail" } }), {
       status: 400,
@@ -166,9 +180,32 @@ export default async (req) => {
     sheetPayload[`${pillarId}_quickWin`] = aiCopy?.[pillarId]?.quickWin || "";
   });
 
+  sheetPayload.marketSolution = aiCopy?.marketSolution || "";
+  sheetPayload.researchNotes = researchNotes || "";
+  sheetPayload.callRequested = requestCall ? "yes" : "no";
   sheetPayload.summaryText = summaryText;
   sheetPayload.emailSubject = subject;
   sheetPayload.emailHtmlBody = htmlBody;
+
+  // Only populated when the user clicks "Request a call" — the Apps Script sends
+  // this as a second, separate email straight to the Ekos team, with the lead's
+  // own address set as replyTo so a reply goes directly to them.
+  if (requestCall) {
+    const order = ["High", "Medium", "Low"];
+    const flagLines = Object.keys(results || {})
+      .sort((a, b) => order.indexOf(results[a].level) - order.indexOf(results[b].level))
+      .map((id) => `${PILLAR_LABELS[id] || id}: ${results[id].level}`)
+      .join(", ");
+    sheetPayload.notifySubject = `New call request — ${businessName}`;
+    sheetPayload.notifyHtmlBody = `
+      <p>${businessName} has requested a call after completing the sustainability screener.</p>
+      <p><strong>Contact:</strong> ${contactName || "(no name given)"} — ${contactEmail}</p>
+      <p><strong>Website:</strong> ${website || "(none given)"}</p>
+      <p><strong>Priority map:</strong> ${flagLines}</p>
+      <p>Reply directly to this email to reach them.</p>
+    `;
+  }
+
 
   const [sheet, mailchimp] = await Promise.all([
     sendToGoogleSheet(sheetPayload),
