@@ -529,11 +529,11 @@ For each flagged area write:
 1. "why" — one or two sentences on why this specific business should pay attention here. Cover risk AND opportunity, not just risk — for climate specifically, where genuinely relevant, mention the competitive-advantage side too (cost savings from reduced energy/fuel use, brand and customer trust, easier compliance, opening new markets), not only exposure. Where it's genuinely relevant (most often climate, sometimes environment) you can also note that demonstrating mitigation action can support better terms with lenders and insurers — but only where it actually fits; don't force it into every pillar.
 2. "quickWin" — one concrete, low-effort first action within a few months.
 
-Also write a "futureVision" — 2-3 sentences painting a concrete, specific picture of what THIS business could look like in five years if it acts on these opportunities: how it operates, what customers and partners see, its standing in a lower-carbon economy. Ground it in their actual sector and products, not generic inspirational language — this should feel like a plausible, appealing near-future for this specific business, not a slogan.
+Also write a "marketSolution" passage (3-4 sentences, no more) that shifts how this business thinks about what it actually sells. Businesses default to describing themselves by their product or service — but customers don't buy products for their own sake, they buy an outcome. A battery maker isn't really selling batteries, they're selling portable energy and freedom from the grid. Reframe THIS specific business the same way: what real outcome does it actually deliver, once you look past the product itself? Then connect that outcome to what markets increasingly pay for under climate pressure — reduced risk, supply-chain resilience, emissions transparency, regulatory certainty, water or resource security, food security, depending on what's genuinely relevant to this business. Don't resolve this neatly or wrap it up with a tidy conclusion — end on a genuinely open question that unsettles a comfortable assumption and leaves the reader wanting to think it through with someone, not a statement that lets them feel finished. Avoid the word "journey."
 
 Return ONLY valid JSON, no markdown fences, in this exact shape:
-{"futureVision": "...", "climate": {"why": "...", "quickWin": "..."}, "environment": {...}}
-Only include pillar keys for the flagged areas, using ids exactly: climate, environment, nature, social, governance. Always include futureVision.`;
+{"marketSolution": "...", "climate": {"why": "...", "quickWin": "..."}, "environment": {...}}
+Only include pillar keys for the flagged areas, using ids exactly: climate, environment, nature, social, governance. Always include marketSolution.`;
 
     try {
       const parsed = await callClaude({ model: "claude-sonnet-4-6", max_tokens: 1300, messages: [{ role: "user", content: prompt }] });
@@ -574,7 +574,7 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         }),
       });
       const data = await res.json();
-      setCallStatus(data.flow && data.flow.ok ? "done" : "error");
+      setCallStatus(data.flow && data.flow.ok && data.flow.notificationSent ? "done" : "error");
     } catch (err) {
       console.error("Request call failed:", err);
       setCallStatus("error");
@@ -817,10 +817,10 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
           </div>
         )}
 
-        {aiState === "done" && aiCopy?.futureVision && (
+        {aiState === "done" && aiCopy?.marketSolution && (
           <div className="vision-panel">
-            <p className="subhead">{businessName || "Your business"} in a low-carbon economy</p>
-            <p>{aiCopy.futureVision}</p>
+            <p className="subhead">Beyond the product</p>
+            <p>{aiCopy.marketSolution}</p>
           </div>
         )}
 
@@ -918,7 +918,7 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         .cta-block { border-top: 1px solid ${T.line}; padding-top: 24px; text-align: left; }
         .cta-block p { font-size: 14.5px; color: ${T.inkSoft}; margin: 0 0 16px; max-width: 48ch; }
         .logo-header { width: 100%; max-width: 640px; margin-bottom: 22px; }
-        .logo-header img { height: 54px; display: block; }
+        .logo-header img { height: 72px; display: block; }
         @media (max-width: 560px) {
           .panel { padding: 28px 22px; }
           h1 { font-size: 27px; }
