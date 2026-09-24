@@ -51,11 +51,13 @@ function doPost(e) {
   });
   sheet.appendRow(row);
 
+  var clientEmailSent = false;
   try {
     MailApp.sendEmail(data.contactEmail, data.emailSubject, data.summaryText, {
       htmlBody: data.emailHtmlBody,
       name: "Ekos"
     });
+    clientEmailSent = true;
   } catch (err) {
     // Row is already saved even if the email fails — log it so you can see why
     // in Apps Script's execution log (View > Executions).
@@ -64,18 +66,24 @@ function doPost(e) {
 
   // Only present when the user clicked "Request a call" — notifies the Ekos
   // team directly, with the lead's own address set as replyTo.
+  var notificationSent = null; // null = not requested; true/false = attempted
   if (data.notifySubject && data.notifyHtmlBody) {
+    notificationSent = false;
     try {
       MailApp.sendEmail("ekos@ekos.co.nz", data.notifySubject, data.notifySubject, {
         htmlBody: data.notifyHtmlBody,
         name: "Ekos Screener",
         replyTo: data.contactEmail
       });
+      notificationSent = true;
     } catch (err) {
       Logger.log("Team notification email failed: " + err.message);
     }
   }
 
-  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify({
+    ok: true,
+    clientEmailSent: clientEmailSent,
+    notificationSent: notificationSent
+  })).setMimeType(ContentService.MimeType.JSON);
 }
