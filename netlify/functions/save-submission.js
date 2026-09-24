@@ -26,7 +26,7 @@ const LEVEL_ORDER = ["High", "Medium", "Low"];
 const PILLAR_QUESTION_IDS = {
   climate: ["energy", "weather", "priceVolatility", "emissionsManagement", "customerExposure"],
   environment: ["waste", "water", "compliance"],
-  nature: ["dependency", "sensitiveAreas"],
+  nature: ["impact", "sensitiveAreas"],
   social: ["supplyChain", "visibility", "incidents"],
   governance: ["policy", "reporting", "asked"],
 };
@@ -133,7 +133,7 @@ export default async (req) => {
     });
   }
 
-  const { businessName, contactName, contactEmail, website, profile, answers, results, aiCopy } = body;
+  const { businessName, contactName, contactEmail, website, profile, answers, results, aiCopy, researchNotes, requestCall } = body;
   if (!businessName || !contactEmail) {
     return new Response(JSON.stringify({ error: { message: "Missing businessName or contactEmail" } }), {
       status: 400,
@@ -166,9 +166,32 @@ export default async (req) => {
     sheetPayload[`${pillarId}_quickWin`] = aiCopy?.[pillarId]?.quickWin || "";
   });
 
+  sheetPayload.futureVision = aiCopy?.futureVision || "";
+  sheetPayload.researchNotes = researchNotes || "";
+  sheetPayload.callRequested = requestCall ? "yes" : "no";
   sheetPayload.summaryText = summaryText;
   sheetPayload.emailSubject = subject;
   sheetPayload.emailHtmlBody = htmlBody;
+
+  // Only populated when the user clicks "Request a call" — the Apps Script sends
+  // this as a second, separate email straight to the Ekos team, with the lead's
+  // own address set as replyTo so a reply goes directly to them.
+  if (requestCall) {
+    const order = ["High", "Medium", "Low"];
+    const flagLines = Object.keys(results || {})
+      .sort((a, b) => order.indexOf(results[a].level) - order.indexOf(results[b].level))
+      .map((id) => `${PILLAR_LABELS[id] || id}: ${results[id].level}`)
+      .join(", ");
+    sheetPayload.notifySubject = `New call request — ${businessName}`;
+    sheetPayload.notifyHtmlBody = `
+      <p>${businessName} has requested a call after completing the sustainability screener.</p>
+      <p><strong>Contact:</strong> ${contactName || "(no name given)"} — ${contactEmail}</p>
+      <p><strong>Website:</strong> ${website || "(none given)"}</p>
+      <p><strong>Priority map:</strong> ${flagLines}</p>
+      <p>Reply directly to this email to reach them.</p>
+    `;
+  }
+
 
   const [sheet, mailchimp] = await Promise.all([
     sendToGoogleSheet(sheetPayload),
