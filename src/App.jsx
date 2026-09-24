@@ -51,7 +51,7 @@ const PILLARS = [
     label: "Nature",
     tagline: "What your business depends on and affects in the natural world",
     questions: [
-      { id: "dependency", text: "Do its products or services — directly, or through what they're made from and where those materials originate — depend on natural resources like land, water, fisheries, or forestry?", type: "yesno" },
+      { id: "impact", text: "Beyond relying on natural resources, does the business's operations or supply chain directly affect ecosystems — through land use, water extraction, pollution, or resource depletion?", type: "yesnounsure" },
       { id: "sensitiveAreas", text: "Might any sites or suppliers operate in or near ecologically sensitive areas?", type: "yesnounsure" },
     ],
   },
@@ -78,7 +78,27 @@ const PILLARS = [
 ];
 
 const PROFILE_FIELDS = [
-  { key: "sector", label: "Sector", question: "Which sector best fits this business?", kind: "select", options: ["Retail trade", "Accommodation & food services", "Manufacturing", "Construction", "Professional & financial services", "Agriculture, forestry & fishing", "Transport & logistics", "Other"] },
+  { key: "sector", label: "Sector", question: "Which sector best fits this business?", kind: "select", options: [
+    "Agriculture, Forestry and Fishing",
+    "Mining",
+    "Manufacturing",
+    "Electricity, Gas, Water and Waste Services",
+    "Construction",
+    "Wholesale Trade",
+    "Retail Trade",
+    "Accommodation and Food Services",
+    "Transport, Postal and Warehousing",
+    "Information Media and Telecommunications",
+    "Financial and Insurance Services",
+    "Rental, Hiring and Real Estate Services",
+    "Professional, Scientific and Technical Services",
+    "Administrative and Support Services",
+    "Public Administration and Safety",
+    "Education and Training",
+    "Health Care and Social Assistance",
+    "Arts and Recreation Services",
+    "Other Services",
+  ] },
   { key: "employees", label: "Employees", question: "Roughly how many employees does it have?", kind: "select", options: ["1–19", "20–49", "50–199", "200+"] },
   { key: "revenue", label: "Annual revenue", question: "Roughly what annual revenue band does it fall into?", kind: "select", options: ["Under $2m", "$2m–$10m", "$10m–$50m", "Over $50m"] },
   { key: "sites", label: "Number of physical sites", question: "How many physical sites or locations does it operate?", kind: "number" },
@@ -334,6 +354,8 @@ export default function EkosScreener() {
   const [aiCopy, setAiCopy] = useState(null);
   const [aiState, setAiState] = useState("idle");
   const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | done | error
+  const [researchNotes, setResearchNotes] = useState("");
+  const [callStatus, setCallStatus] = useState("idle"); // idle | sending | done | error
 
   const step = STEPS[stepIndex];
   const currentPillar = PILLARS.find((p) => p.id === step);
@@ -394,6 +416,7 @@ export default function EkosScreener() {
         throw new Error("Phase 1 (research) failed");
       }
       const notes = notesResult.notes;
+      setResearchNotes(notes);
 
       // Phase 2: six small, parallel, non-search calls — each just extracts one
       // section from the notes above, so none of them carry search-time risk.
@@ -506,12 +529,14 @@ For each flagged area write:
 1. "why" — one or two sentences on why this specific business should pay attention here. Cover risk AND opportunity, not just risk — for climate specifically, where genuinely relevant, mention the competitive-advantage side too (cost savings from reduced energy/fuel use, brand and customer trust, easier compliance, opening new markets), not only exposure. Where it's genuinely relevant (most often climate, sometimes environment) you can also note that demonstrating mitigation action can support better terms with lenders and insurers — but only where it actually fits; don't force it into every pillar.
 2. "quickWin" — one concrete, low-effort first action within a few months.
 
+Also write a "futureVision" — 2-3 sentences painting a concrete, specific picture of what THIS business could look like in five years if it acts on these opportunities: how it operates, what customers and partners see, its standing in a lower-carbon economy. Ground it in their actual sector and products, not generic inspirational language — this should feel like a plausible, appealing near-future for this specific business, not a slogan.
+
 Return ONLY valid JSON, no markdown fences, in this exact shape:
-{"climate": {"why": "...", "quickWin": "..."}, "environment": {...}}
-Only include keys for the flagged areas, using ids exactly: climate, environment, nature, social, governance.`;
+{"futureVision": "...", "climate": {"why": "...", "quickWin": "..."}, "environment": {...}}
+Only include pillar keys for the flagged areas, using ids exactly: climate, environment, nature, social, governance. Always include futureVision.`;
 
     try {
-      const parsed = await callClaude({ model: "claude-sonnet-4-6", max_tokens: 1000, messages: [{ role: "user", content: prompt }] });
+      const parsed = await callClaude({ model: "claude-sonnet-4-6", max_tokens: 1300, messages: [{ role: "user", content: prompt }] });
       setAiCopy(parsed);
       setAiState("done");
       saveSubmission(parsed);
@@ -527,13 +552,32 @@ Only include keys for the flagged areas, using ids exactly: climate, environment
       const res = await fetch("/.netlify/functions/save-submission", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessName, contactName, contactEmail, website, profile, answers, results, aiCopy: finalAiCopy }),
+        body: JSON.stringify({ businessName, contactName, contactEmail, website, profile, answers, results, aiCopy: finalAiCopy, researchNotes }),
       });
       const data = await res.json();
       setSaveStatus(data.flow && data.flow.ok ? "done" : "error");
     } catch (err) {
       console.error("Save/email failed:", err);
       setSaveStatus("error");
+    }
+  }
+
+  async function requestCall() {
+    setCallStatus("sending");
+    try {
+      const res = await fetch("/.netlify/functions/save-submission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName, contactName, contactEmail, website, profile, answers, results, aiCopy, researchNotes,
+          requestCall: true,
+        }),
+      });
+      const data = await res.json();
+      setCallStatus(data.flow && data.flow.ok ? "done" : "error");
+    } catch (err) {
+      console.error("Request call failed:", err);
+      setCallStatus("error");
     }
   }
 
@@ -757,7 +801,10 @@ Only include keys for the flagged areas, using ids exactly: climate, environment
                   {copy ? (
                     <>
                       <p className="result-card__why">{copy.why}</p>
-                      <p className="result-card__win"><strong>Quick win: </strong>{copy.quickWin}</p>
+                      <div className="quick-win-box">
+                        <span className="quick-win-box__label">Quick win</span>
+                        <p>{copy.quickWin}</p>
+                      </div>
                     </>
                   ) : (
                     <p className="result-card__why">
@@ -770,10 +817,29 @@ Only include keys for the flagged areas, using ids exactly: climate, environment
           </div>
         )}
 
+        {aiState === "done" && aiCopy?.futureVision && (
+          <div className="vision-panel">
+            <p className="subhead">{businessName || "Your business"} in a low-carbon economy</p>
+            <p>{aiCopy.futureVision}</p>
+          </div>
+        )}
+
         {aiState === "done" && (
           <div className="cta-block">
-            <p>This is a first screen, not a full assessment. An Ekos consultant can work through your flagged areas with you and build an action plan.</p>
-            <button className="btn btn--primary">Talk to Ekos about this</button>
+            {callStatus === "idle" && (
+              <>
+                <p>This is a first screen, not a full assessment. An Ekos consultant can work through your flagged areas with you and build an action plan.</p>
+                <button className="btn btn--primary" onClick={requestCall}>Request a call from Ekos</button>
+              </>
+            )}
+            {callStatus === "sending" && <p className="ai-status">Letting the team know…</p>}
+            {callStatus === "done" && <p className="ai-status">Thanks — someone from Ekos will be in touch shortly.</p>}
+            {callStatus === "error" && (
+              <p className="ai-status ai-status--error">
+                Couldn't send that just now — you can also reach us directly at ekos@ekos.co.nz.
+                <button className="btn btn--ghost btn--small" onClick={requestCall}>Retry</button>
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -842,10 +908,17 @@ Only include keys for the flagged areas, using ids exactly: climate, environment
         .result-card__name { font-family: 'Fraunces', serif; font-size: 18px; color: ${T.forest}; }
         .result-card__why { font-size: 14.5px; line-height: 1.5; margin: 0 0 8px; color: ${T.ink}; }
         .result-card__win { font-size: 14px; line-height: 1.5; margin: 0; color: ${T.inkSoft}; }
+        .quick-win-box { background: #F3EEE1; border: 1px solid ${T.gold}; border-radius: 3px; padding: 10px 14px; margin-top: 4px; }
+        .quick-win-box__label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: ${T.gold}; margin-bottom: 4px; }
+        .quick-win-box p { margin: 0; font-size: 14px; line-height: 1.5; color: ${T.ink}; }
+        .vision-panel { background: ${T.forest}; border-radius: 4px; padding: 24px 26px; margin-bottom: 20px; }
+        .subhead { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px; }
+        .vision-panel .subhead { color: #BFD9EA; margin-bottom: 10px; }
+        .vision-panel p:not(.subhead) { color: #fff; line-height: 1.6; margin: 0; font-family: 'Fraunces', serif; font-size: 17px; }
         .cta-block { border-top: 1px solid ${T.line}; padding-top: 24px; text-align: left; }
         .cta-block p { font-size: 14.5px; color: ${T.inkSoft}; margin: 0 0 16px; max-width: 48ch; }
         .logo-header { width: 100%; max-width: 640px; margin-bottom: 22px; }
-        .logo-header img { height: 38px; display: block; }
+        .logo-header img { height: 54px; display: block; }
         @media (max-width: 560px) {
           .panel { padding: 28px 22px; }
           h1 { font-size: 27px; }
