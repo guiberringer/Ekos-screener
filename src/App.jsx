@@ -51,8 +51,9 @@ const PILLARS = [
     label: "Nature",
     tagline: "What your business depends on and affects in the natural world",
     questions: [
-      { id: "impact", text: "Beyond relying on natural resources, does the business's operations or supply chain directly affect ecosystems — through land use, water extraction, pollution, or resource depletion?", type: "yesnounsure" },
+      { id: "impact", text: "Beyond relying on nature, does this business — through its operations or supply chain — affect ecosystems? For example: land use, water extraction, pollution, or resource depletion.", type: "yesnounsure" },
       { id: "sensitiveAreas", text: "Might any sites or suppliers operate in or near ecologically sensitive areas?", type: "yesnounsure" },
+      { id: "disclosure", text: "Is this business likely to face growing pressure from regulators, lenders, or customers to report on or manage its impact on nature?", type: "yesnounsure" },
     ],
   },
   {
@@ -61,8 +62,8 @@ const PILLARS = [
     tagline: "Labour practices, in your business and across your supply chain",
     questions: [
       { id: "supplyChain", text: "Does its supply chain include overseas manufacturing or labour-intensive sourcing?", type: "yesno" },
-      { id: "visibility", text: "Does it likely have real visibility into labour practices at its key suppliers?", type: "yesnounsure_inverted" },
-      { id: "incidents", text: "Any known workplace health & safety incidents or labour disputes in the last two years?", type: "yesno" },
+      { id: "visibility", text: "Is it likely to have real visibility into labour practices at its key suppliers?", type: "yesnounsure_inverted" },
+      { id: "incidents", text: "Have there been any known workplace health & safety incidents or labour disputes in the last two years?", type: "yesno" },
     ],
   },
   {
@@ -71,8 +72,8 @@ const PILLARS = [
     tagline: "Whether sustainability has a real seat at the table",
     questions: [
       { id: "policy", text: "Does this business have a documented sustainability or environmental policy?", type: "yesno_inverted" },
-      { id: "reporting", text: "Is sustainability performance likely reported to its board or leadership team?", type: "yesno_inverted" },
-      { id: "asked", text: "Do its customers or investors likely ask it sustainability questions — RFPs, tenders, ESG surveys?", type: "yesno" },
+      { id: "reporting", text: "Is sustainability performance likely to be reported to its board or leadership team?", type: "yesno_inverted" },
+      { id: "asked", text: "Are its customers or investors likely to ask it sustainability questions — RFPs, tenders, ESG surveys?", type: "yesno" },
     ],
   },
 ];
@@ -103,7 +104,7 @@ const PROFILE_FIELDS = [
   { key: "revenue", label: "Annual revenue", question: "Roughly what annual revenue band does it fall into?", kind: "select", options: ["Under $2m", "$2m–$10m", "$10m–$50m", "Over $50m"] },
   { key: "sites", label: "Number of physical sites", question: "How many physical sites or locations does it operate?", kind: "number" },
   { key: "offshoreSupply", label: "Offshore/overseas supply chain", question: "Does its supply chain include overseas manufacturing or offshore sourcing?", kind: "yesno" },
-  { key: "natureInputs", label: "Depends on natural resources", question: "Are its key inputs — including raw materials embedded in what it sells or sources, like paper, timber, cotton, or packaging, not just obviously \"natural\" products — ultimately sourced from nature: agriculture, fisheries, forestry, land?", kind: "yesno" },
+  { key: "natureInputs", label: "Depends on natural resources", question: "Does this business depend on nature for what it makes or how it operates — even indirectly, like paper from forestry or cotton from farming?", kind: "yesno" },
   { key: "weatherExposed", label: "Weather-exposed sites", question: "Do its physical sites face weather-related risk — flooding, storms, drought, heat?", kind: "yesno" },
 ];
 
@@ -309,22 +310,47 @@ function Level({ value, onChange }) {
   return <Choice value={value} onChange={onChange} options={[{ value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" }]} />;
 }
 
-function AiBadge({ show }) {
-  if (!show) return null;
-  return <span className="ai-badge">AI suggested — check &amp; edit</span>;
+function AiBadge({ edited }) {
+  return (
+    <span className="ai-badge">
+      {edited ? "Edited — AI research below" : "AI suggested — check & edit"}
+    </span>
+  );
 }
 
-function Question({ q, value, onChange, aiRationale, showBadge }) {
+function NoteField({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  if (!open && !value) {
+    return (
+      <button type="button" className="note-toggle" onClick={() => setOpen(true)}>
+        + Add a note
+      </button>
+    );
+  }
+  return (
+    <div className="note-field">
+      <textarea
+        className="note-textarea"
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Add your own note — e.g. we switched suppliers in 2024"
+      />
+    </div>
+  );
+}
+
+function Question({ q, value, onChange, aiRationale, hasAi, edited, noteValue, onNoteChange }) {
   return (
     <div className="question">
       <div className="question__head">
         <p className="question__text">{q.text}</p>
-        <AiBadge show={showBadge} />
+        {hasAi && <AiBadge edited={edited} />}
       </div>
       {aiRationale && <p className="question__rationale">{aiRationale}</p>}
       {q.type === "level" && <Level value={value} onChange={onChange} />}
       {(q.type === "yesno" || q.type === "yesno_inverted") && <YesNo value={value} onChange={onChange} />}
       {(q.type === "yesnounsure" || q.type === "yesnounsure_inverted") && <YesNoUnsure value={value} onChange={onChange} />}
+      <NoteField value={noteValue} onChange={onNoteChange} />
     </div>
   );
 }
@@ -348,14 +374,17 @@ export default function EkosScreener() {
     Object.fromEntries(PROFILE_FIELDS.map((f) => [f.key, ""]))
   );
   const [answers, setAnswers] = useState(Object.fromEntries(PILLARS.map((p) => [p.id, {}])));
-  const [aiMeta, setAiMeta] = useState({ profile: {}, pillars: {} }); // rationale + whether still AI-sourced
+  const [aiMeta, setAiMeta] = useState({ profile: {}, pillars: {} }); // AI rationale per field — kept permanently once set
   const [touched, setTouched] = useState(new Set());
+  const [userNotes, setUserNotes] = useState({ profile: {}, pillars: {} });
 
   const [aiCopy, setAiCopy] = useState(null);
   const [aiState, setAiState] = useState("idle");
   const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | done | error
   const [researchNotes, setResearchNotes] = useState("");
   const [callStatus, setCallStatus] = useState("idle"); // idle | sending | done | error
+  const [callDebug, setCallDebug] = useState("");
+  const [showCallDebug, setShowCallDebug] = useState(false);
 
   const step = STEPS[stepIndex];
   const currentPillar = PILLARS.find((p) => p.id === step);
@@ -381,6 +410,15 @@ export default function EkosScreener() {
   function setAnswer(pillarId, qId, val) {
     setAnswers((prev) => ({ ...prev, [pillarId]: { ...prev[pillarId], [qId]: val } }));
     markTouched(`${pillarId}.${qId}`);
+  }
+  function setProfileNote(key, val) {
+    setUserNotes((prev) => ({ ...prev, profile: { ...prev.profile, [key]: val } }));
+  }
+  function setPillarNote(pillarId, qId, val) {
+    setUserNotes((prev) => ({
+      ...prev,
+      pillars: { ...prev.pillars, [pillarId]: { ...prev.pillars[pillarId], [qId]: val } },
+    }));
   }
 
   async function pollForNotes(jobId) {
@@ -526,7 +564,7 @@ Flagged priority areas:
 ${summaryLines}
 
 For each flagged area write:
-1. "why" — one or two sentences on why this specific business should pay attention here. Cover risk AND opportunity, not just risk — for climate specifically, where genuinely relevant, mention the competitive-advantage side too (cost savings from reduced energy/fuel use, brand and customer trust, easier compliance, opening new markets), not only exposure. Where it's genuinely relevant (most often climate, sometimes environment) you can also note that demonstrating mitigation action can support better terms with lenders and insurers — but only where it actually fits; don't force it into every pillar.
+1. "why" — one or two sentences on why this specific business should pay attention here. Cover risk AND opportunity, not just risk — for climate specifically, where genuinely relevant, mention the competitive-advantage side too (cost savings from reduced energy/fuel use, brand and customer trust, easier compliance, opening new markets), not only exposure. Where it's genuinely relevant (most often climate, sometimes environment) you can also note that demonstrating mitigation action can support better terms with lenders and insurers — but only where it actually fits; don't force it into every pillar. For nature specifically, where relevant, you can note that roughly a third of all New Zealand bank lending sits in nature-dependent sectors, and that banks, investors and insurers increasingly read nature awareness as a signal of stronger management capability — the same logic as the climate/financing point, extended to nature. Again, only where it genuinely fits.
 2. "quickWin" — one concrete, low-effort first action within a few months.
 
 Also write a "marketSolution" passage (3-4 sentences, no more) that shifts how this business thinks about what it actually sells. Businesses default to describing themselves by their product or service — but customers don't buy products for their own sake, they buy an outcome. A battery maker isn't really selling batteries, they're selling portable energy and freedom from the grid. Reframe THIS specific business the same way: what real outcome does it actually deliver, once you look past the product itself? Then connect that outcome to what markets increasingly pay for under climate pressure — reduced risk, supply-chain resilience, emissions transparency, regulatory certainty, water or resource security, food security, depending on what's genuinely relevant to this business. Don't resolve this neatly or wrap it up with a tidy conclusion — end on a genuinely open question that unsettles a comfortable assumption and leaves the reader wanting to think it through with someone, not a statement that lets them feel finished. Avoid the word "journey."
@@ -552,7 +590,7 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
       const res = await fetch("/.netlify/functions/save-submission", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessName, contactName, contactEmail, website, profile, answers, results, aiCopy: finalAiCopy, researchNotes }),
+        body: JSON.stringify({ businessName, contactName, contactEmail, website, profile, answers, results, aiCopy: finalAiCopy, researchNotes, aiMeta, userNotes }),
       });
       const data = await res.json();
       setSaveStatus(data.flow && data.flow.ok ? "done" : "error");
@@ -569,11 +607,12 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          businessName, contactName, contactEmail, website, profile, answers, results, aiCopy, researchNotes,
+          businessName, contactName, contactEmail, website, profile, answers, results, aiCopy, researchNotes, aiMeta, userNotes,
           requestCall: true,
         }),
       });
       const data = await res.json();
+      setCallDebug(data.flow?.debugRaw || "");
       setCallStatus(data.flow && data.flow.ok && data.flow.notificationSent ? "done" : "error");
     } catch (err) {
       console.error("Request call failed:", err);
@@ -629,7 +668,7 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
           </label>
         </div>
         <p className="fine-print">
-          We'll email you a copy of your results, and it's how an Ekos consultant would follow up if you want to go further.
+          We'll send your results to this email and use it to contact you if you'd like further support from Ekos.
         </p>
 
         {researchStatus === "loading" && <p className="ai-status">Researching {businessName || "your business"}… this can take up to a minute.</p>}
@@ -683,14 +722,15 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         </p>
 
         {PROFILE_FIELDS.map((f) => {
-          const aiShown = !!aiMeta.profile[f.key] && !touched.has(`profile.${f.key}`);
+          const hasAi = !!aiMeta.profile[f.key];
+          const edited = touched.has(`profile.${f.key}`);
           return (
             <div className="question" key={f.key}>
               <div className="question__head">
                 <p className="question__text">{f.question}</p>
-                <AiBadge show={aiShown} />
+                {hasAi && <AiBadge edited={edited} />}
               </div>
-              {aiShown && <p className="question__rationale">{aiMeta.profile[f.key]}</p>}
+              {hasAi && <p className="question__rationale">{aiMeta.profile[f.key]}</p>}
               {f.kind === "select" && (
                 <select value={profile[f.key]} onChange={(e) => setProfileField(f.key, e.target.value)}>
                   <option value="">Select</option>
@@ -701,6 +741,7 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
                 <input type="number" min="0" value={profile[f.key]} onChange={(e) => setProfileField(f.key, e.target.value)} placeholder="e.g. 3" />
               )}
               {f.kind === "yesno" && <YesNo value={profile[f.key]} onChange={(v) => setProfileField(f.key, v)} />}
+              <NoteField value={userNotes.profile[f.key]} onChange={(v) => setProfileNote(f.key, v)} />
             </div>
           );
         })}
@@ -721,15 +762,19 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         <h2>{pillar.tagline}</h2>
         {pillar.questions.map((q) => {
           const key = `${pillar.id}.${q.id}`;
-          const aiShown = !!(aiMeta.pillars[pillar.id] && aiMeta.pillars[pillar.id][q.id]) && !touched.has(key);
+          const hasAi = !!(aiMeta.pillars[pillar.id] && aiMeta.pillars[pillar.id][q.id]);
+          const edited = touched.has(key);
           return (
             <Question
               key={q.id}
               q={q}
               value={answers[pillar.id][q.id]}
               onChange={(v) => setAnswer(pillar.id, q.id, v)}
-              aiRationale={aiShown ? aiMeta.pillars[pillar.id][q.id] : null}
-              showBadge={aiShown}
+              aiRationale={hasAi ? aiMeta.pillars[pillar.id][q.id] : null}
+              hasAi={hasAi}
+              edited={edited}
+              noteValue={userNotes.pillars[pillar.id] && userNotes.pillars[pillar.id][q.id]}
+              onNoteChange={(v) => setPillarNote(pillar.id, q.id, v)}
             />
           );
         })}
@@ -840,6 +885,14 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
                 <button className="btn btn--ghost btn--small" onClick={requestCall}>Retry</button>
               </p>
             )}
+            {callDebug && (
+              <div className="debug-block">
+                <button type="button" className="debug-toggle" onClick={() => setShowCallDebug((s) => !s)}>
+                  {showCallDebug ? "Hide" : "Show"} raw response (debug)
+                </button>
+                {showCallDebug && <pre className="debug-pre">{callDebug}</pre>}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -889,6 +942,9 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         .question__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
         .question__text { font-size: 15.5px; line-height: 1.5; margin: 0 0 6px; color: ${T.ink}; }
         .question__rationale { font-size: 13px; line-height: 1.5; color: ${T.inkSoft}; font-style: italic; margin: 0 0 10px; }
+        .note-toggle { background: none; border: none; color: ${T.forestLight}; font-size: 12.5px; text-decoration: underline; cursor: pointer; padding: 6px 0 0; display: block; }
+        .note-field { margin-top: 10px; }
+        .note-textarea { width: 100%; font-family: 'Inter', sans-serif; font-size: 13.5px; padding: 9px 11px; border: 1px solid ${T.line}; border-radius: 3px; min-height: 52px; resize: vertical; }
         select.question__text-sibling {}
         .ai-badge { font-size: 11px; font-weight: 600; color: ${T.gold}; border: 1px solid ${T.gold}; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
         .choice-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
