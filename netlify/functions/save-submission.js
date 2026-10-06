@@ -26,7 +26,7 @@ const LEVEL_ORDER = ["High", "Medium", "Low"];
 const PILLAR_QUESTION_IDS = {
   climate: ["energy", "weather", "priceVolatility", "emissionsManagement", "customerExposure"],
   environment: ["waste", "water", "compliance"],
-  nature: ["impact", "sensitiveAreas"],
+  nature: ["impact", "sensitiveAreas", "disclosure"],
   social: ["supplyChain", "visibility", "incidents"],
   governance: ["policy", "reporting", "asked"],
 };
@@ -60,6 +60,14 @@ function buildEmail({ contactName, businessName, results, aiCopy }) {
         })
         .join("")}
     </ul>
+    ${
+      aiCopy?.marketSolution
+        ? `<div style="background:#144C6E;border-radius:4px;padding:20px 22px;margin:20px 0;">
+             <p style="color:#BFD9EA;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 8px;">Beyond the product</p>
+             <p style="color:#fff;font-size:15px;line-height:1.6;margin:0;">${aiCopy.marketSolution}</p>
+           </div>`
+        : ""
+    }
     <p>This is a first screen, not a full assessment. An Ekos consultant can work through
     your flagged areas with you and build an action plan — and businesses that can
     demonstrate real mitigation action are often better placed for more favourable
@@ -80,9 +88,23 @@ async function sendToGoogleSheet(payload) {
       body: JSON.stringify(payload),
       redirect: "follow", // Apps Script web apps respond with a redirect on first hit
     });
-    return { ok: res.ok, status: res.status };
+    const rawText = await res.text();
+    let scriptResult = {};
+    let parseError = null;
+    try {
+      scriptResult = JSON.parse(rawText);
+    } catch (err) {
+      parseError = err.message;
+    }
+    return {
+      ok: res.ok,
+      status: res.status,
+      clientEmailSent: scriptResult.clientEmailSent,
+      notificationSent: scriptResult.notificationSent,
+      debugRaw: `HTTP ${res.status}${parseError ? ` — JSON parse failed: ${parseError}` : ""}\n\n${rawText.slice(0, 1000)}`,
+    };
   } catch (err) {
-    return { ok: false, error: err.message };
+    return { ok: false, error: err.message, debugRaw: `Fetch to Apps Script threw: ${err.message}` };
   }
 }
 
@@ -133,7 +155,7 @@ export default async (req) => {
     });
   }
 
-  const { businessName, contactName, contactEmail, website, profile, answers, results, aiCopy, researchNotes, requestCall } = body;
+  const { businessName, contactName, contactEmail, website, profile, answers, results, aiCopy, researchNotes, aiMeta, userNotes, requestCall } = body;
   if (!businessName || !contactEmail) {
     return new Response(JSON.stringify({ error: { message: "Missing businessName or contactEmail" } }), {
       status: 400,
@@ -151,22 +173,28 @@ export default async (req) => {
     website: website || "",
   };
 
-  // Every profile field, not just the four that used to be picked out.
+  // Every profile field, plus the AI's rationale for it (if any) and any note the
+  // user added — kept as paired columns right next to the answer itself.
   PROFILE_KEYS.forEach((key) => {
     sheetPayload[`profile_${key}`] = profile?.[key] ?? "";
+    sheetPayload[`profile_${key}_ai_rationale`] = aiMeta?.profile?.[key] || "";
+    sheetPayload[`profile_${key}_note`] = userNotes?.profile?.[key] || "";
   });
 
-  // Every individual pillar question's answer, plus that pillar's level and AI copy.
+  // Every individual pillar question's answer, its AI rationale, any user note,
+  // plus that pillar's level and AI copy.
   Object.keys(PILLAR_QUESTION_IDS).forEach((pillarId) => {
     PILLAR_QUESTION_IDS[pillarId].forEach((qId) => {
       sheetPayload[`${pillarId}_${qId}`] = answers?.[pillarId]?.[qId] ?? "";
+      sheetPayload[`${pillarId}_${qId}_ai_rationale`] = aiMeta?.pillars?.[pillarId]?.[qId] || "";
+      sheetPayload[`${pillarId}_${qId}_note`] = userNotes?.pillars?.[pillarId]?.[qId] || "";
     });
     sheetPayload[`${pillarId}_level`] = results?.[pillarId]?.level || "";
     sheetPayload[`${pillarId}_why`] = aiCopy?.[pillarId]?.why || "";
     sheetPayload[`${pillarId}_quickWin`] = aiCopy?.[pillarId]?.quickWin || "";
   });
 
-  sheetPayload.futureVision = aiCopy?.futureVision || "";
+  sheetPayload.marketSolution = aiCopy?.marketSolution || "";
   sheetPayload.researchNotes = researchNotes || "";
   sheetPayload.callRequested = requestCall ? "yes" : "no";
   sheetPayload.summaryText = summaryText;
