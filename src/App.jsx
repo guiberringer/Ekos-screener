@@ -17,8 +17,13 @@ const T = {
   low: "#5C7A63",
 };
 
+// Diagnostic panels are hidden from normal visitors. Ekos staff can reveal them by
+// adding ?debug to the page address (e.g. yoursite.netlify.app/?debug).
+const debugMode =
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).has("debug");
+
 const FONT_IMPORT =
-  "@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');";
+  "@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&display=swap');";
 
 /* ---------------------------------------------------------------------
    Content: pillars, questions
@@ -675,7 +680,7 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         {researchStatus === "error" && (
           <p className="ai-status ai-status--error">Couldn't complete the research just now — you can retry, or fill everything in yourself.</p>
         )}
-        {(researchStatus === "done" || researchStatus === "error") && debugInfo && (
+        {debugMode && (researchStatus === "done" || researchStatus === "error") && debugInfo && (
           <div className="debug-block">
             <button type="button" className="debug-toggle" onClick={() => setShowDebug((s) => !s)}>
               {showDebug ? "Hide" : "Show"} what the AI actually found (debug)
@@ -885,7 +890,7 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
                 <button className="btn btn--ghost btn--small" onClick={requestCall}>Retry</button>
               </p>
             )}
-            {callDebug && (
+            {debugMode && callDebug && (
               <div className="debug-block">
                 <button type="button" className="debug-toggle" onClick={() => setShowCallDebug((s) => !s)}>
                   {showCallDebug ? "Hide" : "Show"} raw response (debug)
@@ -904,20 +909,20 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
       <style>{`
         ${FONT_IMPORT}
         * { box-sizing: border-box; }
-        .app { font-family: 'Inter', sans-serif; background: ${T.bg}; color: ${T.ink}; min-height: 100%; padding: 32px 20px 64px; display: flex; flex-direction: column; align-items: center; }
+        .app { font-family: 'Poppins', sans-serif; background: ${T.bg}; color: ${T.ink}; min-height: 100%; padding: 32px 20px 64px; display: flex; flex-direction: column; align-items: center; }
         .rail { width: 100%; max-width: 640px; display: flex; gap: 6px; margin-bottom: 28px; }
         .rail__seg { flex: 1; height: 3px; background: ${T.line}; border-radius: 2px; overflow: hidden; }
         .rail__seg--fill { background: ${T.forest}; }
         .panel { width: 100%; max-width: 640px; background: ${T.surface}; border: 1px solid ${T.line}; border-radius: 4px; padding: 40px; }
         .panel--intro { text-align: left; padding: 48px 40px; }
         .eyebrow { font-size: 13px; letter-spacing: 0.02em; color: ${T.gold}; margin: 0 0 14px; font-weight: 500; }
-        h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 34px; line-height: 1.18; margin: 0 0 18px; color: ${T.forest}; max-width: 22ch; }
-        h1 em { font-style: italic; color: ${T.gold}; }
-        h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 24px; line-height: 1.3; margin: 4px 0 10px; color: ${T.forest}; }
+        h1 { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 29px; line-height: 1.28; margin: 0 0 18px; color: ${T.forest}; max-width: 24ch; }
+        h1 em { font-style: italic; font-weight: 500; color: ${T.gold}; }
+        h2 { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 21px; line-height: 1.35; margin: 4px 0 10px; color: ${T.forest}; }
         .step-label { font-size: 13px; color: ${T.inkSoft}; margin: 0 0 4px; font-weight: 500; }
-        .lede { font-size: 16px; line-height: 1.55; color: ${T.inkSoft}; max-width: 48ch; margin: 0 0 28px; }
+        .lede { font-size: 15px; line-height: 1.7; font-weight: 400; color: ${T.inkSoft}; max-width: 48ch; margin: 0 0 28px; }
         .lede--tight { margin-bottom: 22px; }
-        .btn { font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500; padding: 12px 22px; border-radius: 3px; border: 1px solid transparent; cursor: pointer; transition: opacity 0.15s ease, transform 0.1s ease; }
+        .btn { font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 500; padding: 12px 22px; border-radius: 3px; border: 1px solid transparent; cursor: pointer; transition: opacity 0.15s ease, transform 0.1s ease; }
         .btn:active { transform: translateY(1px); }
         .btn--primary { background: ${T.forest}; color: #fff; }
         .btn--primary:hover { opacity: 0.9; }
@@ -928,7 +933,7 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         .btn--small { padding: 6px 14px; font-size: 13px; margin-left: 12px; }
         .field { display: block; margin-bottom: 18px; }
         .field span { display: block; font-size: 13px; color: ${T.inkSoft}; margin-bottom: 6px; font-weight: 500; }
-        .field input, .field select { width: 100%; font-family: 'Inter', sans-serif; font-size: 15px; padding: 11px 12px; border: 1px solid ${T.line}; border-radius: 3px; background: #fff; color: ${T.ink}; }
+        .field input, .field select { width: 100%; font-family: 'Poppins', sans-serif; font-size: 14px; padding: 11px 12px; border: 1px solid ${T.line}; border-radius: 3px; background: #fff; color: ${T.ink}; }
         .field input:focus, .field select:focus { outline: 2px solid ${T.forestLight}; outline-offset: 1px; }
         .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .fine-print { font-size: 12.5px; color: ${T.inkSoft}; margin: -8px 0 22px; }
@@ -940,17 +945,17 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         .debug-pre { margin-top: 10px; background: #EFEEE8; border: 1px solid ${T.line}; border-radius: 3px; padding: 12px 14px; font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 320px; overflow-y: auto; color: ${T.ink}; }
         .question { margin: 22px 0; }
         .question__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-        .question__text { font-size: 15.5px; line-height: 1.5; margin: 0 0 6px; color: ${T.ink}; }
-        .question__rationale { font-size: 13px; line-height: 1.5; color: ${T.inkSoft}; font-style: italic; margin: 0 0 10px; }
+        .question__text { font-size: 14.5px; line-height: 1.6; font-weight: 500; margin: 0 0 6px; color: ${T.ink}; }
+        .question__rationale { font-size: 12.5px; line-height: 1.6; font-weight: 400; color: ${T.inkSoft}; font-style: italic; margin: 0 0 10px; }
         .note-toggle { background: none; border: none; color: ${T.forestLight}; font-size: 12.5px; text-decoration: underline; cursor: pointer; padding: 6px 0 0; display: block; }
         .note-field { margin-top: 10px; }
-        .note-textarea { width: 100%; font-family: 'Inter', sans-serif; font-size: 13.5px; padding: 9px 11px; border: 1px solid ${T.line}; border-radius: 3px; min-height: 52px; resize: vertical; }
+        .note-textarea { width: 100%; font-family: 'Poppins', sans-serif; font-size: 13.5px; padding: 9px 11px; border: 1px solid ${T.line}; border-radius: 3px; min-height: 52px; resize: vertical; }
         select.question__text-sibling {}
         .ai-badge { font-size: 11px; font-weight: 600; color: ${T.gold}; border: 1px solid ${T.gold}; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
         .choice-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-        .choice { font-family: 'Inter', sans-serif; font-size: 14px; padding: 9px 18px; border-radius: 999px; border: 1px solid ${T.line}; background: #fff; color: ${T.ink}; cursor: pointer; }
+        .choice { font-family: 'Poppins', sans-serif; font-size: 13.5px; font-weight: 400; padding: 9px 18px; border-radius: 999px; border: 1px solid ${T.line}; background: #fff; color: ${T.ink}; cursor: pointer; }
         .choice:hover { border-color: ${T.forestLight}; }
-        .choice--active { background: ${T.forest}; border-color: ${T.forest}; color: #fff; }
+        .choice--active { background: ${T.forest}; border-color: ${T.forest}; color: #fff; font-weight: 500; }
         .nav-row { display: flex; justify-content: space-between; margin-top: 32px; padding-top: 24px; border-top: 1px solid ${T.line}; }
         .ai-status { font-size: 14px; color: ${T.inkSoft}; margin: 14px 0 0; }
         .ai-status--error { color: ${T.high}; }
@@ -961,23 +966,26 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
         .result-card[data-level="Low"] { border-left-color: ${T.low}; }
         .result-card__head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
         .result-card__level { font-size: 12px; font-weight: 600; color: ${T.inkSoft}; }
-        .result-card__name { font-family: 'Fraunces', serif; font-size: 18px; color: ${T.forest}; }
-        .result-card__why { font-size: 14.5px; line-height: 1.5; margin: 0 0 8px; color: ${T.ink}; }
+        .result-card__name { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 17px; color: ${T.forest}; }
+        .result-card__why { font-size: 14px; line-height: 1.65; margin: 0 0 8px; color: ${T.ink}; }
         .result-card__win { font-size: 14px; line-height: 1.5; margin: 0; color: ${T.inkSoft}; }
         .quick-win-box { background: #F3EEE1; border: 1px solid ${T.gold}; border-radius: 3px; padding: 10px 14px; margin-top: 4px; }
         .quick-win-box__label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: ${T.gold}; margin-bottom: 4px; }
-        .quick-win-box p { margin: 0; font-size: 14px; line-height: 1.5; color: ${T.ink}; }
+        .quick-win-box p { margin: 0; font-size: 13.5px; line-height: 1.6; color: ${T.ink}; }
         .vision-panel { background: ${T.forest}; border-radius: 4px; padding: 24px 26px; margin-bottom: 20px; }
         .subhead { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px; }
         .vision-panel .subhead { color: #BFD9EA; margin-bottom: 10px; }
-        .vision-panel p:not(.subhead) { color: #fff; line-height: 1.6; margin: 0; font-family: 'Fraunces', serif; font-size: 17px; }
+        .vision-panel p:not(.subhead) { color: #fff; line-height: 1.75; margin: 0; font-family: 'Poppins', sans-serif; font-weight: 300; font-size: 16px; }
         .cta-block { border-top: 1px solid ${T.line}; padding-top: 24px; text-align: left; }
         .cta-block p { font-size: 14.5px; color: ${T.inkSoft}; margin: 0 0 16px; max-width: 48ch; }
         .logo-header { width: 100%; max-width: 640px; margin-bottom: 22px; }
         .logo-header img { height: 72px; display: block; }
+        .ai-footer { width: 100%; max-width: 640px; margin-top: 28px; padding-top: 18px; border-top: 1px solid ${T.line}; }
+        .ai-footer__title { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: ${T.inkSoft}; margin: 0 0 6px; }
+        .ai-footer p:not(.ai-footer__title) { font-size: 12px; line-height: 1.7; font-weight: 300; color: ${T.inkSoft}; margin: 0; }
         @media (max-width: 560px) {
           .panel { padding: 28px 22px; }
-          h1 { font-size: 27px; }
+          h1 { font-size: 24px; }
           .field-grid { grid-template-columns: 1fr; }
         }
       `}</style>
@@ -1001,6 +1009,13 @@ Only include pillar keys for the flagged areas, using ids exactly: climate, envi
       {step === "profile" && renderProfile()}
       {currentPillar && renderPillar(currentPillar)}
       {step === "results" && renderResults()}
+
+      <div className="ai-footer">
+        <p className="ai-footer__title">About the use of AI</p>
+        <p>
+          Ekos is currently developing and implementing an AI policy. This tool relies on AI capabilities, but we believe that in this context it represents a responsible and efficient use of resources. Mitigating AI-related environmental and data security impacts is a high priority for us.
+        </p>
+      </div>
     </div>
   );
 }
